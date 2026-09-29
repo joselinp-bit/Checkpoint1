@@ -1,7 +1,9 @@
 # 🤖 Proyecto Integrador · AI Automation Avanzado (Coderhouse)
 
 **Autora del proyecto:** Joselin Pereira
+
 **Hito actual:** Checkpoint 1 · Agente base y motor de razonamiento (M1)
+
 **Archivo de entrega:** [`checkpoint1_joselin_pereira.json`](./checkpoint1_joselin_pereira.json)
 
 ---
