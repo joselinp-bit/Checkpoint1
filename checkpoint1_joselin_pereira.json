@@ -1,0 +1,401 @@
+{
+  "name": "Checkpoint 1 - Joselin Pereira (AquaNorte)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Checkpoint 1 · Agente base (M1)\n[Chat Trigger] → [AI Agent (Tools Agent) + System Prompt + Tool Google Sheets] → [Log de observabilidad por Gmail]\n\n- Modelo: Anthropic Chat Model · Claude Sonnet 5 (temperatura 0.2)\n- Memoria: Simple Memory por Session_ID (se reemplaza por Airtable en M3)\n- Guardrail: máximo 7 iteraciones\n- Tool: registrar_pedido → Google Sheets (pedidos y derivaciones)\n\nPróximo hito M2: Manager + Workers como sub-workflows.",
+        "height": 232,
+        "width": 520
+      },
+      "id": "4e7a9a76-458f-4000-b849-f26e65aa2de3",
+      "name": "Nota del hito",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ec91a4e5-5533-4841-9c3d-bf318dd4af2e",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        64,
+        288
+      ],
+      "webhookId": "454d118c-bda3-49b7-932c-173ee030195c"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "# 1. ROL\nSos \"Aqua\", el Asistente de Toma de Pedidos de AquaNorte, empresa de reparto a domicilio de agua purificada en bidones y alquiler de dispensers. Te comunicás en español rioplatense, con trato cordial, claro y profesional.\n\n# 2. ÁMBITO\nAtendés exclusivamente estos temas:\n- Consultas sobre productos: bidón de 12 litros, bidón de 20 litros y dispenser frío/calor en comodato.\n- Zonas de reparto: Ciudad Autónoma de Buenos Aires y zona norte del Gran Buenos Aires.\n- Toma de pedidos nuevos.\n- Derivación de casos que requieren un operador humano.\nCualquier otro tema queda fuera de tu ámbito: indicalo con amabilidad y volvé a ofrecer ayuda con pedidos.\n\n# 3. OBJETIVO\nConvertir cada conversación en un pedido completo, confirmado y registrado. Un pedido está completo cuando tenés estos 5 datos obligatorios:\n1. Nombre y apellido.\n2. Teléfono de contacto.\n3. Dirección de entrega con localidad.\n4. Producto y cantidad.\n5. Franja horaria preferida (mañana de 9 a 13 h o tarde de 14 a 18 h).\n\n# 4. PROCEDIMIENTO\n1. Saludá y detectá la intención del cliente.\n2. Pedí los datos faltantes de a uno o dos por mensaje. No repitas preguntas ya respondidas.\n3. Con los 5 datos, mostrá un resumen del pedido y pedí confirmación explícita.\n4. Solo después de la confirmación, usá la herramienta registrar_pedido UNA sola vez con Estado \"Nuevo\".\n5. Informá que el pedido quedó registrado y que un operador se comunicará para coordinar la entrega.\n\n# 5. REGLAS Y RESTRICCIONES (qué NO tenés permitido hacer)\n- NO inventes precios, stock, promociones, descuentos ni plazos de entrega. Si te consultan, respondé que un operador lo confirma al coordinar la entrega.\n- NO aceptes pedidos fuera de las zonas de reparto indicadas.\n- NO registres un pedido sin los 5 datos obligatorios y sin confirmación explícita del cliente.\n- NO registres dos veces el mismo pedido en la misma conversación.\n- NO solicites ni guardes datos de pago, tarjetas, DNI ni contraseñas.\n- NO modifiques ni canceles pedidos existentes: no tenés acceso. Derivá el caso.\n- NO respondas temas ajenos al ámbito (política, programación, recetas, etc.).\n- Respondé en mensajes breves: máximo 4 oraciones, salvo el resumen del pedido.\n- Redactá en español estándar, sin formas de lenguaje inclusivo (no uses \"e\", \"x\" ni \"@\" como marcas de género).\n\n# 6. ESCALAMIENTO\nDerivá a un operador humano en estos casos:\n- Reclamos: bidón dañado, entrega faltante, dispenser con fallas.\n- Consultas de facturación, cobros o deudas.\n- Pedidos corporativos de más de 10 bidones.\n- Pedidos de modificación o cancelación.\n- Cliente molesto o que pide hablar con una persona.\nPara derivar: si tenés al menos nombre y teléfono, usá registrar_pedido con Estado \"Requiere operador\" y describí el caso en Observaciones. Luego informá al cliente que un operador lo contactará. Si no tenés teléfono, pedilo antes de derivar.",
+          "maxIterations": 7,
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "c47ae27f-55ef-4cbb-bf10-a2f8a389db64",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        320,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Registra una fila nueva en la planilla de Pedidos de AquaNorte (Google Sheets). Es la ÚNICA forma de dejar asentado un pedido o una derivación para el equipo de logística.\n\nUSALA ÚNICAMENTE en estos dos casos de negocio:\n1) PEDIDO CONFIRMADO: el cliente ya brindó los 5 datos obligatorios (nombre y apellido, teléfono, dirección con localidad, producto y cantidad, franja horaria) Y confirmó explícitamente el resumen del pedido. En este caso enviá Estado = \"Nuevo\".\n2) DERIVACIÓN A OPERADOR: el caso requiere intervención humana (reclamo, facturación, pedido corporativo de más de 10 bidones, modificación o cancelación, cliente molesto) y tenés al menos nombre y teléfono. En este caso enviá Estado = \"Requiere operador\", explicá el motivo en Observaciones y completá con \"No informado\" los datos que falten.\n\nNO LA USES cuando: el cliente solo consulta información; faltan datos obligatorios de un pedido; el cliente todavía no confirmó; ya registraste ese pedido en esta conversación; la dirección está fuera de CABA o zona norte del GBA.\n\nLlamala una sola vez por pedido. Si devuelve error, no reintentes: informá al cliente que un operador tomará el pedido manualmente.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1VRRtcNcH1x2Wqfo45XbEreTtnJGLlGWZD08CTqbdRQE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Pedidos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VRRtcNcH1x2Wqfo45XbEreTtnJGLlGWZD08CTqbdRQE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM-dd HH:mm') }}",
+            "Session_ID": "={{ $('Chat Trigger').first().json.sessionId }}",
+            "Nombre": "={{ $fromAI('nombre', 'Nombre y apellido del cliente', 'string') }}",
+            "Telefono": "={{ $fromAI('telefono', 'Teléfono de contacto del cliente', 'string') }}",
+            "Direccion": "={{ $fromAI('direccion', 'Dirección de entrega con localidad, o No informado', 'string') }}",
+            "Producto": "={{ $fromAI('producto', 'Bidón 12 L, Bidón 20 L o Dispenser, o No informado', 'string') }}",
+            "Cantidad": "={{ $fromAI('cantidad', 'Cantidad de unidades pedidas, 0 si es derivación', 'number') }}",
+            "Franja_Horaria": "={{ $fromAI('franja_horaria', 'Mañana o Tarde, o No informado', 'string') }}",
+            "Estado": "={{ $fromAI('estado', 'Nuevo o Requiere operador', 'string') }}",
+            "Observaciones": "={{ $fromAI('observaciones', 'Motivo de derivación o aclaraciones del pedido; vacío si no hay', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Session_ID",
+              "displayName": "Session_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Direccion",
+              "displayName": "Direccion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Producto",
+              "displayName": "Producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cantidad",
+              "displayName": "Cantidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Franja_Horaria",
+              "displayName": "Franja_Horaria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Observaciones",
+              "displayName": "Observaciones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b58c0ab8-afef-402a-adba-9598239d8e3a",
+      "name": "registrar_pedido",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        528,
+        512
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bCUmCr7tdFcxXbLR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Arma el reporte de observabilidad a partir del Execution Log del agente\nconst agent = $input.first().json;\nconst trigger = $('Chat Trigger').first().json;\nconst steps = agent.intermediateSteps || [];\n\nconst esc = (v) => String(v ?? '')\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst str = (v) => typeof v === 'string' ? v : JSON.stringify(v, null, 2);\n\nconst pasosHtml = steps.map((s, i) => `\n  <h4>Paso ${i + 1}: herramienta \"${esc(s.action?.tool)}\"</h4>\n  <p><b>Razonamiento / log:</b></p><pre>${esc(s.action?.log)}</pre>\n  <p><b>Entrada:</b></p><pre>${esc(str(s.action?.toolInput))}</pre>\n  <p><b>Resultado:</b></p><pre>${esc(str(s.observation))}</pre>`).join('<hr>');\n\nconst herramientaUsada = steps.length > 0;\nconst fecha = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });\n\nconst cuerpoHtml = `\n  <h2>Reporte de observabilidad - Agente Aqua</h2>\n  <p><b>Fecha:</b> ${fecha}<br>\n  <b>Session_ID:</b> ${esc(trigger.sessionId)}<br>\n  <b>Herramienta invocada:</b> ${herramientaUsada ? 'SÍ (' + steps.length + ' paso/s)' : 'NO'}</p>\n  <h3>Mensaje del cliente</h3><pre>${esc(trigger.chatInput)}</pre>\n  <h3>Respuesta del agente</h3><pre>${esc(agent.output)}</pre>\n  <h3>Execution Log</h3>\n  ${herramientaUsada ? pasosHtml : '<p>El agente respondió sin invocar herramientas.</p>'}`;\n\nreturn [{\n  json: {\n    sessionId: trigger.sessionId,\n    herramientaUsada,\n    cantidadPasos: steps.length,\n    asunto: `[Aqua] ${herramientaUsada ? 'Herramienta ejecutada' : 'Conversación'} - sesión ${String(trigger.sessionId).slice(0, 8)}`,\n    cuerpoHtml\n  }\n}];"
+      },
+      "id": "b2018ebf-2e17-421a-a76f-eda8ecaa27af",
+      "name": "Armar Log de Observabilidad",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "joselin.p@flashboxlogistica.com",
+        "subject": "={{ $json.asunto }}",
+        "message": "={{ $json.cuerpoHtml }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a84d8db4-54b8-4973-8cfc-01301cf43196",
+      "name": "Gmail - Reporte de Supervisión",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        288
+      ],
+      "webhookId": "1e9e3eb7-3cfc-4f60-b7aa-3f5fac3e3676",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5USHVTcol84pIzd2",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6f327baa-e18e-40b2-813e-8f6452af2609",
+              "name": "output",
+              "value": "={{ $('AI Agent').first().json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5ecdf92e-cbb3-4156-b7d0-54ada9cfb776",
+      "name": "Respuesta al Chat",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1104,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-5",
+          "cachedResultName": "Claude Sonnet 5",
+          "cachedResultUrl": ""
+        },
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        176,
+        512
+      ],
+      "id": "f2c1980e-abe0-47bb-a374-3521404859f9",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "v8yqdrtIoqAjzu7n",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        352,
+        512
+      ],
+      "id": "887ea0ce-8655-4ade-83af-61ceff6fc603",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "registrar_pedido": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Armar Log de Observabilidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar Log de Observabilidad": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Reporte de Supervisión",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Reporte de Supervisión": {
+      "main": [
+        [
+          {
+            "node": "Respuesta al Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "94c4aaea-51c7-4176-b80f-c42ba4f211e3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "872baedac5e9bd10dcdbde0cdc2b0e5cfe1b4a35b8c6742fbacdb246ba4666b6"
+  },
+  "nodeGroups": [],
+  "id": "XjOa1RyyCwqrDSYO",
+  "tags": []
+}
